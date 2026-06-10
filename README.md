@@ -19,37 +19,44 @@ A Java tool that automatically generates entity classes and mapper classes based
    - **Schema** — typically `public`
    - **Database** — your database name
 4. Click **Submit**
-5. A file explorer dialog will open — navigate to and select the folder where you want the files generated (ideally a package folder inside `src/main/java/`)
-6. Click **Open**
+5. A folder dialog will open — select your **project folder** (or any folder inside `src/main/java/`)
+6. Click **Select Folder**
 
-The tool will generate the following files:
+## Environment variables (optional)
 
-electedFolder/
+The connection fields can be pre-filled automatically by setting the following environment variables:
 
+| Variable | Description |
+|---|---|
+| `JDBC_USER` | PostgreSQL username |
+| `JDBC_PASSWORD` | PostgreSQL password |
+| `JDBC_CONNECTION_STRING` | Connection string, e.g. `jdbc:postgresql://localhost:5432/%s` |
+| `JDBC_DB` | Database name |
+
+In IntelliJ, these can be set under **Run → Edit Configurations → Environment variables**.
+
+## Output
+
+If the selected folder is not already inside `src/main/java/`, the tool automatically creates `src/main/java/app/` in the selected folder and generates the files there.
+
+```
+src/main/java/app/
 ├── persistence/
-
 │   ├── Mapper.java
-
 │   ├── ConnectionPool.java
-
-│   ├── Example.java
-
+│   ├── ExampleMapper.java
 │   └── ...
-
 ├── entities/
-
 │   ├── Example.java
-
 │   └── ...
-
 └── exceptions/
+    └── DatabaseException.java
+```
 
-└── DatabaseException.java
+Package declarations are derived automatically from the folder structure, so the generated files compile without manual adjustments.
 
 ## Notes
 
-- Select a folder **inside** `src/main/java/` to get correct package declarations
-- If you select a folder outside `src/main/java/`, the tool will warn you and generate files with simplified package names
 - Primary keys are automatically excluded from `insert` methods
 - The `update` method only updates fields that are not `null`
 - `USER-DEFINED` types (PostgreSQL enums) are mapped to `String`
