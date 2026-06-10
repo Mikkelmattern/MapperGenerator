@@ -25,15 +25,25 @@ A Java tool that automatically generates entity classes and mapper classes based
 The tool will generate the following files:
 
 electedFolder/
+
 ├── persistence/
+
 │   ├── Mapper.java
+
 │   ├── ConnectionPool.java
-│   ├── ContactInfoMapper.java
+
+│   ├── Example.java
+
 │   └── ...
+
 ├── entities/
-│   ├── ContactInfo.java
+
+│   ├── Example.java
+
 │   └── ...
+
 └── exceptions/
+
 └── DatabaseException.java
 
 ## Notes
