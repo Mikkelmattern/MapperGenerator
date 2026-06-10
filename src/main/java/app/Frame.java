@@ -8,6 +8,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 
+import javafx.application.Platform;
+
 public class Frame implements ActionListener {
     JFrame frame = new JFrame("SpringForm");
     JTextField userField, passwordField, urlField, schemaField, databaseField;
@@ -19,6 +21,11 @@ public class Frame implements ActionListener {
                  UnsupportedLookAndFeelException e) {
             JOptionPane.showMessageDialog(frame, "Fejl: " + e.getMessage());
         }
+
+        Platform.startup(() -> {
+        });
+        Platform.setImplicitExit(false);
+
         frame.setSize(350, 250);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -36,7 +43,7 @@ public class Frame implements ActionListener {
 
 
         // If user has .env use variables from there
-        userField.setText(System.getenv("JDBC_USER") != null ? System.getenv("JDBC_USER"): "");
+        userField.setText(System.getenv("JDBC_USER") != null ? System.getenv("JDBC_USER") : "");
         passwordField.setText(System.getenv("JDBC_PASSWORD") != null ? System.getenv("JDBC_PASSWORD") : "");
         urlField.setText(System.getenv("JDBC_CONNECTION_STRING") != null ? System.getenv("JDBC_CONNECTION_STRING") : "");
         schemaField.setText("public");
@@ -79,6 +86,7 @@ public class Frame implements ActionListener {
         String database = databaseField.getText();
         String url = String.format(urlField.getText(), database);
         String schema = schemaField.getText();
+
         try {
             // 1. Get connection
             ConnectionPool connectionPool = ConnectionPool.getInstance(user, password, url, schema, database);
@@ -88,22 +96,28 @@ public class Frame implements ActionListener {
             List<TableDefinition> tables = schemaReader.readSchema(connectionPool);
 
             // 3. Choose output-folder
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            int result = chooser.showOpenDialog(frame);
+            Path outputDir = PathResolver.chooseDirectory();
 
-            if (result == JFileChooser.APPROVE_OPTION) {
-                Path outputDir = chooser.getSelectedFile().toPath();
 
-                // 4. Generate files
+            if (outputDir != null) {
+
+                // 4. Create correct root if not found
+                Path javaRoot = PathResolver.resolveJavaRoot(outputDir);
+
+                if (!javaRoot.equals(outputDir)) {
+                    JOptionPane.showMessageDialog(frame, "Filerne genereres i " + javaRoot);
+                }
+
+                // 5. Generate files
                 classGenerator generator = new classGenerator();
-                generator.generate(tables, outputDir);
+                generator.generate(tables, javaRoot);
 
-                // 5. Show message
+                // 6. Show message
                 JOptionPane.showMessageDialog(frame, "Genereret " + tables.size() + " mappere i " + outputDir);
 
-                // 6. Close Jframe
+                // 7. Close Jframe
                 frame.dispose();
+                System.exit(0);
             }
         } catch (DatabaseException | IOException ex) {
             JOptionPane.showMessageDialog(frame, "Fejl: " + ex.getMessage());

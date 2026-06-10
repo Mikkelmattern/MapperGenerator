@@ -1,11 +1,12 @@
 package app;
 
 
-import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+
+import static app.PathResolver.extractBasePackage;
 
 public class classGenerator {
     private final String PUBLIC = "public ";
@@ -23,26 +24,24 @@ public class classGenerator {
         Files.createDirectories(entitiesDir);
         Files.createDirectories(exceptionDir);
 
-        String pathStr = outputDir.toString().replace("\\", "/");
-        if (!pathStr.contains("src/main/java/")) {
-            JOptionPane.showMessageDialog(null, "Advarsel: Valgte mappe er ikke under src/main/java/\nPackage-navne kan være forkerte.");
-        }
-
         String basePackagePersistence = extractBasePackage(outputDir, "persistence");
         String basePackageEntities = extractBasePackage(outputDir, "entities");
         String basePackageException = extractBasePackage(outputDir, "exceptions");
 
         // Mapper Interface
-        Files.writeString(persistenceDir.resolve("Mapper.java"), basePackagePersistence + generateMapperInterface(basePackageException));
+        writeIfAbsent(persistenceDir.resolve("Mapper.java"), basePackagePersistence + generateMapperInterface(basePackageException));
+
         // ConnectionPool
-        Files.writeString(persistenceDir.resolve("ConnectionPool.java"), basePackagePersistence + generateConnectionPool());
+        writeIfAbsent(persistenceDir.resolve("ConnectionPool.java"), basePackagePersistence + generateConnectionPool());
+
         // DatabaseException
-        Files.writeString(exceptionDir.resolve("DatabaseException.java"), basePackageException + generateDatabaseException());
+        writeIfAbsent(exceptionDir.resolve("DatabaseException.java"), basePackageException + generateDatabaseException());
+
         // Mapper & Entity classes
         for (TableDefinition table : tables) {
             String className = toPascalCase(table.getTableName());
-            Files.writeString(entitiesDir.resolve(className + ".java"), basePackageEntities + generateModel(table));
-            Files.writeString(persistenceDir.resolve(className + "Mapper.java"), basePackagePersistence + generateMapper(table, basePackageException, basePackageEntities));
+            writeIfAbsent(entitiesDir.resolve(className + ".java"), basePackageEntities + generateModel(table));
+            writeIfAbsent(persistenceDir.resolve(className + "Mapper.java"), basePackagePersistence + generateMapper(table, basePackageException, basePackageEntities));
         }
 
     }
@@ -269,15 +268,8 @@ public class classGenerator {
                 + generateMapRow(tableDefinition);
     }
 
-    private String generateMapperMethod(String signature) {
-        return INDENT + "@Override\n" + INDENT + PUBLIC + signature
-                + " throws DatabaseException {\n" + INDENT + INDENT + "// TODO\n" + INDENT + "}\n\n";
-    }
-
     private String generateMapperInterface(String exceptionPack) {
         String exceptionPath = exceptionPack.substring(8, exceptionPack.length() - 3);
-        System.out.println(exceptionPack);
-        System.out.println(exceptionPath);
         return "import " + exceptionPath + ".DatabaseException;\n" + """
                 import java.util.List;
                 
@@ -292,19 +284,6 @@ public class classGenerator {
                 
                     void delete(int id) throws DatabaseException;
                 }""";
-    }
-
-    private String extractBasePackage(Path outputDir, String subPackage) {
-        String pathStr = outputDir.toString().replace("\\", "/");
-        int idx = pathStr.indexOf("src/main/java/");
-
-        if (idx == -1) {
-            return "package " + subPackage + ";\n\n";
-        }
-
-        String basePackage = pathStr.substring(idx + "src/main/java/".length())
-                .replace("/", ".");
-        return "package " + basePackage + "." + subPackage + ";\n\n";
     }
 
     private String generateGetAllMethod(TableDefinition tableDefinition) {
@@ -639,5 +618,13 @@ public class classGenerator {
                 .append(catchPart);
 
         return sb.toString();
+    }
+
+    private void writeIfAbsent(Path filePath, String content) throws IOException {
+        if (Files.exists(filePath)) {
+            System.out.println("Springer over (findes allerede): " + filePath.getFileName());
+            return;
+        }
+        Files.writeString(filePath, content);
     }
 }
