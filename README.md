@@ -37,7 +37,7 @@ In IntelliJ, these can be set under **Run → Edit Configurations → Environmen
 
 ## Output
 
-If the selected folder is not already inside `src/main/java/`, the tool automatically creates `src/main/java/app/` in the selected folder and generates the files there.
+If the selected folder is not already inside `src/main/java/`, the tool automatically finds or creates `src/main/java/app/` in the selected folder and generates the files there.
 
 ```
 src/main/java/app/
@@ -54,6 +54,12 @@ src/main/java/app/
 ```
 
 Package declarations are derived automatically from the folder structure, so the generated files compile without manual adjustments.
+
+## Existing files are never overwritten
+
+If a generated file already exists, it is **skipped**. This means you can safely re-run the generator after adding new tables — your hand-written changes to existing mappers are preserved.
+
+To regenerate a file from scratch (e.g. after changing a table's columns), delete the file and run the generator again.
 
 ## Notes
 
