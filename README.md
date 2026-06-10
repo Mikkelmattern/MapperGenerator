@@ -23,3 +23,35 @@ A Java tool that automatically generates entity classes and mapper classes based
 6. Click **Open**
 
 The tool will generate the following files:
+
+electedFolder/
+├── persistence/
+│   ├── Mapper.java
+│   ├── ConnectionPool.java
+│   ├── ContactInfoMapper.java
+│   └── ...
+├── entities/
+│   ├── ContactInfo.java
+│   └── ...
+└── exceptions/
+└── DatabaseException.java
+
+## Notes
+
+- Select a folder **inside** `src/main/java/` to get correct package declarations
+- If you select a folder outside `src/main/java/`, the tool will warn you and generate files with simplified package names
+- Primary keys are automatically excluded from `insert` methods
+- The `update` method only updates fields that are not `null`
+- `USER-DEFINED` types (PostgreSQL enums) are mapped to `String`
+
+## Generated mapper methods
+
+Each mapper implements the `Mapper<T>` interface with the following methods:
+
+| Method | Description |
+|---|---|
+| `getById(int id)` | Fetch a single entity by primary key |
+| `getAll()` | Fetch all entities |
+| `insert(T entity)` | Insert a new entity (skips primary key) |
+| `update(T entity)` | Update only non-null fields |
+| `delete(int id)` | Delete by primary key |
