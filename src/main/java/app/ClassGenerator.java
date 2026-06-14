@@ -8,7 +8,7 @@ import java.util.List;
 
 import static app.PathResolver.extractBasePackage;
 
-public class classGenerator {
+public class ClassGenerator {
     private final String PUBLIC = "public ";
     private final String PRIVATE = "private ";
     private final String THIS = "this.";
@@ -46,7 +46,7 @@ public class classGenerator {
 
     }
 
-    private String toPascalCase(String tableName) {
+    public String toPascalCase(String tableName) {
         String[] results = tableName.split("_");
         StringBuilder name = new StringBuilder();
         for (String result : results) {
@@ -56,7 +56,7 @@ public class classGenerator {
         return name.toString();
     }
 
-    private String toCamelCase(String columnName) {
+    public String toCamelCase(String columnName) {
         String[] results = columnName.split("_");
         StringBuilder name = new StringBuilder();
         for (int i = 0; i < results.length; i++) {
@@ -142,7 +142,7 @@ public class classGenerator {
         return sb.toString();
     }
 
-    private String toGetterName(String columnName) {
+    public String toGetterName(String columnName) {
         return "get" + toPascalCase(columnName);
     }
 
