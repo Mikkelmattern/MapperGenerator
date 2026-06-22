@@ -15,7 +15,7 @@ public class PathResolver {
         CompletableFuture<File> future = new CompletableFuture<>();
         Platform.runLater(() -> {
             DirectoryChooser chooser = new DirectoryChooser();
-            chooser.setTitle("Vælg output-mappe");
+            chooser.setTitle("Select output folder");
             future.complete(chooser.showDialog(null));
         });
         File dir = future.join();
@@ -24,13 +24,13 @@ public class PathResolver {
 
     public static Path resolveJavaRoot(Path selectedDir) throws IOException {
 
-        // 1. Er vi allerede inde i src/main/java?
+        // 1. Already inside src/main/java?
         String pathStr = selectedDir.toString().replace("\\", "/");
         if (pathStr.contains("src/main/java")) {
             return selectedDir;
         }
 
-        // 2. Findes src/main/java under den valgte mappe?
+        // 2. Does src/main/java exist under the selected folder?
         Path existingJavaRoot = selectedDir.resolve("src/main/java");
         if (Files.exists(existingJavaRoot)) {
             Path appDir = existingJavaRoot.resolve("app");
@@ -38,7 +38,7 @@ public class PathResolver {
             return appDir;
         }
 
-        // 3. Ellers opret hele strukturen
+        // 3. Otherwise create the full structure
         Path javaRoot = selectedDir.resolve("src/main/java/app");
         Files.createDirectories(javaRoot);
         return javaRoot;

@@ -350,7 +350,7 @@ public class ClassGenerator {
                     .append(",\n");
         }
 
-        // fjern sidste komma
+        // remove trailing comma
         params.setLength(params.length() - 2);
 
         return INDENT + "private " + pascalCase + " mapRow(ResultSet rs) throws SQLException {\n" +
@@ -674,7 +674,7 @@ public class ClassGenerator {
 
     private void writeIfAbsent(Path filePath, String content) throws IOException {
         if (Files.exists(filePath)) {
-            System.out.println("Springer over (findes allerede): " + filePath.getFileName());
+            System.out.println("Skipping (already exists): " + filePath.getFileName());
             return;
         }
         Files.writeString(filePath, content);

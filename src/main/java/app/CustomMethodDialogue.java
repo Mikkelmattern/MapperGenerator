@@ -12,7 +12,7 @@ public class CustomMethodDialogue {
 
     private final List<TableDefinition> tables;
     private final List<CustomMethod> customMethods = new ArrayList<>();
-    JDialog dialog = new JDialog((Frame) null, "Custom metoder", true);
+    JDialog dialog = new JDialog((Frame) null, "Custom Methods", true);
 
     private CrudType selectedCrudType = null;
     private List<String> selectedParams = null;
@@ -45,7 +45,7 @@ public class CustomMethodDialogue {
         columnSelect.setVisibleRowCount(5);
         columnSelect.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         JTextField methodTextField = new JTextField(20);
-        JButton addButton = new JButton("Tilføj metode");
+        JButton addButton = new JButton("Add Method");
         DefaultListModel<String> methodOverviewContent = new DefaultListModel<>();
         JList<String> methodOverview = new JList<>(methodOverviewContent);
         methodOverview.setVisibleRowCount(5);
@@ -86,10 +86,10 @@ public class CustomMethodDialogue {
 
 
         // Adds the different JObjects to the rows
-        addRow(panel, gbc, "Tabel:", tableDropDown, 0);
+        addRow(panel, gbc, "Table:", tableDropDown, 0);
         addRow(panel, gbc, "Type:", crudDropDown, 1);
-        addRow(panel, gbc, "Parametre:", new JScrollPane(columnSelect), 2);
-        addRow(panel, gbc, "Metodenavn:", methodTextField, 3);
+        addRow(panel, gbc, "Parameters:", new JScrollPane(columnSelect), 2);
+        addRow(panel, gbc, "Method name:", methodTextField, 3);
 
         // Adds add button to the row
         gbc.gridx = 0;
@@ -101,7 +101,7 @@ public class CustomMethodDialogue {
         // Adds the method overview
         gbc.gridy = 5;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        panel.add(new JLabel("Tilføjede metoder:"), gbc);
+        panel.add(new JLabel("Added methods:"), gbc);
         gbc.gridy = 6;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
