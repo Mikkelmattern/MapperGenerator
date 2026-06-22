@@ -84,12 +84,12 @@ Each mapper implements the `Mapper<T>` interface with the following methods:
 
 After connecting, a dialog lets you define extra methods to append to any mapper. For each method:
 
-1. **Tabel** — pick which table the method belongs to
+1. **Table** — pick which table the method belongs to
 2. **Type** — choose the operation: `READ`, `UPDATE`, or `DELETE`
-3. **Parametre** — select one or more columns; these become the `WHERE` clause conditions
-4. **Metodenavn** — auto-generated from the type, table, and selected columns (e.g. `getOrderByUserId`); you can rename it manually
+3. **Parameters** — select one or more columns; these become the `WHERE` clause conditions
+4. **Method name** — auto-generated from the type, table, and selected columns (e.g. `getOrderByUserId`); you can rename it manually
 
-Click **Tilføj metode** to queue the method, then repeat for any others. Click **Ok** when done.
+Click **Add Method** to queue the method, then repeat for any others. Click **Ok** when done.
 
 ### Return type inference
 
