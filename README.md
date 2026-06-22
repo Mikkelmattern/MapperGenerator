@@ -19,8 +19,9 @@ A Java tool that automatically generates entity classes and mapper classes based
    - **Schema** — typically `public`
    - **Database** — your database name
 4. Click **Submit**
-5. A folder dialog will open — select your **project folder** (or any folder inside `src/main/java/`)
-6. Click **Select Folder**
+5. A custom methods dialog opens — add any extra mapper methods you need (optional), then click **Ok**
+6. A folder dialog will open — select your **project folder** (or any folder inside `src/main/java/`)
+7. Click **Select Folder**
 
 ## Environment variables (optional)
 
@@ -78,3 +79,34 @@ Each mapper implements the `Mapper<T>` interface with the following methods:
 | `insert(T entity)` | Insert a new entity (skips primary key) |
 | `update(T entity)` | Update only non-null fields |
 | `delete(int id)` | Delete by primary key |
+
+## Custom methods
+
+After connecting, a dialog lets you define extra methods to append to any mapper. For each method:
+
+1. **Tabel** — pick which table the method belongs to
+2. **Type** — choose the operation: `READ`, `UPDATE`, or `DELETE`
+3. **Parametre** — select one or more columns; these become the `WHERE` clause conditions
+4. **Metodenavn** — auto-generated from the type, table, and selected columns (e.g. `getOrderByUserId`); you can rename it manually
+
+Click **Tilføj metode** to queue the method, then repeat for any others. Click **Ok** when done.
+
+### Return type inference
+
+The return type is inferred automatically — you do not select it manually:
+
+| Situation | Return type |
+|---|---|
+| READ with a primary key or unique column as parameter | `T` (single object) |
+| READ with any other column(s) | `List<T>` |
+| UPDATE or DELETE | `void` |
+
+### Generated SQL
+
+| Type | SQL pattern |
+|---|---|
+| READ | `SELECT * FROM table WHERE col = ?` |
+| UPDATE | Dynamic `UPDATE table SET ... WHERE col = ?` (same null-check logic as the standard `update`) |
+| DELETE | `DELETE FROM table WHERE col = ?` |
+
+Multiple parameters are joined with `AND`.
