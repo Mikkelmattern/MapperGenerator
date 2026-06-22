@@ -10,8 +10,8 @@ import java.util.List;
 
 import javafx.application.Platform;
 
-public class Frame implements ActionListener {
-    JFrame frame = new JFrame("SpringForm");
+public class MainWindow implements ActionListener {
+    JFrame frame = new JFrame("Connect to database");
     JTextField userField, passwordField, urlField, schemaField, databaseField;
 
     public void mainFrame() {
@@ -95,6 +95,10 @@ public class Frame implements ActionListener {
             SchemaReader schemaReader = new SchemaReader();
             List<TableDefinition> tables = schemaReader.readSchema(connectionPool);
 
+            // Create custom methods
+            CustomMethodDialogue customMethodDialogue = new CustomMethodDialogue(tables);
+            List<CustomMethod> customMethods = customMethodDialogue.show();
+
             // 3. Choose output-folder
             Path outputDir = PathResolver.chooseDirectory();
 
@@ -109,8 +113,8 @@ public class Frame implements ActionListener {
                 }
 
                 // 5. Generate files
-                classGenerator generator = new classGenerator();
-                generator.generate(tables, javaRoot);
+                ClassGenerator generator = new ClassGenerator();
+                generator.generate(tables, javaRoot, customMethods);
 
                 // 6. Show message
                 JOptionPane.showMessageDialog(frame, "Genereret " + tables.size() + " mappere i " + outputDir);

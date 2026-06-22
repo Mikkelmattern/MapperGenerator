@@ -3,8 +3,8 @@ package app;
 public class Main {
 
     public static void main(String[] args) {
-        Frame frame = new Frame();
+        MainWindow mainWindow = new MainWindow();
 
-        frame.mainFrame();
+        mainWindow.mainFrame();
     }
 }
