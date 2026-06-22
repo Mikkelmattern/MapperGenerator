@@ -97,7 +97,7 @@ public class MainWindow implements ActionListener {
 
             // Create custom methods
             CustomMethodDialogue customMethodDialogue = new CustomMethodDialogue(tables);
-            customMethodDialogue.show();
+            List<CustomMethod> customMethods = customMethodDialogue.show();
 
             // 3. Choose output-folder
             Path outputDir = PathResolver.chooseDirectory();
@@ -114,7 +114,7 @@ public class MainWindow implements ActionListener {
 
                 // 5. Generate files
                 ClassGenerator generator = new ClassGenerator();
-                generator.generate(tables, javaRoot);
+                generator.generate(tables, javaRoot, customMethods);
 
                 // 6. Show message
                 JOptionPane.showMessageDialog(frame, "Genereret " + tables.size() + " mappere i " + outputDir);

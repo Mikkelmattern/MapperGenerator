@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static app.PathResolver.extractBasePackage;
 
@@ -14,7 +15,13 @@ public class ClassGenerator {
     private final String THIS = "this.";
     private final String INDENT = "    ";
 
-    public void generate(List<TableDefinition> tables, Path outputDir) throws IOException {
+    private static String getWhereClause(List<ColumnDefinition> params) {
+        return params.stream()
+                .map(p -> p.getColumnName() + " = ?")
+                .collect(Collectors.joining(" AND "));
+    }
+
+    public void generate(List<TableDefinition> tables, Path outputDir, List<CustomMethod> customMethods) throws IOException {
 
         Path persistenceDir = outputDir.resolve("persistence");
         Path entitiesDir = outputDir.resolve("entities");
@@ -39,9 +46,19 @@ public class ClassGenerator {
 
         // Mapper & Entity classes
         for (TableDefinition table : tables) {
+
             String className = toPascalCase(table.getTableName());
+            StringBuilder fullMapper = new StringBuilder(basePackagePersistence + generateMapper(table, basePackageException, basePackageEntities));
+            for (CustomMethod customMethod : customMethods) {
+                if (customMethod.getTable().getTableName().equals(table.getTableName())) {
+                    fullMapper.setLength(fullMapper.length() - 2);
+                    fullMapper.append(generateCustomMethod(customMethod));
+                    fullMapper.append("}");
+                }
+            }
+
             writeIfAbsent(entitiesDir.resolve(className + ".java"), basePackageEntities + generateModel(table));
-            writeIfAbsent(persistenceDir.resolve(className + "Mapper.java"), basePackagePersistence + generateMapper(table, basePackageException, basePackageEntities));
+            writeIfAbsent(persistenceDir.resolve(className + "Mapper.java"), fullMapper.toString());
         }
 
     }
@@ -142,8 +159,8 @@ public class ClassGenerator {
         return sb.toString();
     }
 
-    public String toGetterName(String columnName) {
-        return "get" + toPascalCase(columnName);
+    public String toGetterName(String originalName) {
+        return "get" + toPascalCase(originalName);
     }
 
     private String generateSetters(List<ColumnDefinition> columns) {
@@ -340,7 +357,7 @@ public class ClassGenerator {
                 INDENT + INDENT + "return new " + pascalCase + "(\n" +
                 params +
                 "\n" + INDENT + INDENT + ");\n" +
-                INDENT + "}\n";
+                INDENT + "}\n\n";
     }
 
     private String generateConnectionPool() {
@@ -569,7 +586,8 @@ public class ClassGenerator {
     private String generateUpdateMethod(TableDefinition tableDefinition) {
         String pascalCase = toPascalCase(tableDefinition.getTableName());
         String camelCase = toCamelCase(tableDefinition.getTableName());
-
+        String pk = tableDefinition.getColumns().stream().filter(ColumnDefinition::isPrimaryKey).findFirst().orElseThrow().toString();
+        String getPk = toGetterName(pk);
         String classPart = INDENT + "@Override\n" + INDENT +
                 "public void update(" + pascalCase + " " + camelCase + ") throws DatabaseException {\n";
 
@@ -592,13 +610,13 @@ public class ClassGenerator {
                 + INDENT + INDENT + "}\n";
 
         String restSql = INDENT + INDENT + "sql.setLength(sql.length() - 2);\n"
-                + INDENT + INDENT + "sql.append(\" WHERE id = ?\");\n"
-                + INDENT + INDENT + "params.add(" + camelCase + ".getId());\n";
+                + INDENT + INDENT + "sql.append(\" WHERE " + pk + " = ?\");\n"
+                + INDENT + INDENT + "params.add(" + camelCase + "." + getPk + ");\n";
 
         String tryPart = INDENT + INDENT + "try (\n"
-                + INDENT + INDENT + INDENT + "Connection connection = connectionPool.getConnection();\n"
-                + INDENT + INDENT + INDENT + "PreparedStatement ps = connection.prepareStatement(sql.toString())) {\n"
-                + INDENT + INDENT + INDENT + "for (int i = 0 ; i < params.size(); i++) {\n"
+                + INDENT + INDENT + INDENT + INDENT + "Connection connection = connectionPool.getConnection();\n"
+                + INDENT + INDENT + INDENT + INDENT + "PreparedStatement ps = connection.prepareStatement(sql.toString())) {\n"
+                + INDENT + INDENT + INDENT + "for (int i = 0; i < params.size(); i++) {\n"
                 + INDENT + INDENT + INDENT + INDENT + "ps.setObject(i + 1, params.get(i));\n"
                 + INDENT + INDENT + INDENT + "}\n"
                 + INDENT + INDENT + INDENT + "ps.executeUpdate();\n";
@@ -620,6 +638,37 @@ public class ClassGenerator {
         return sb.toString();
     }
 
+    private String dynamicUpdateSqlString(CustomMethod method) {
+
+        TableDefinition tableDefinition = method.getTable();
+        String camelCase = toCamelCase(tableDefinition.getTableName());
+        String pascalCase = toPascalCase(tableDefinition.getTableName());
+        String pk = tableDefinition.getColumns().stream().filter(ColumnDefinition::isPrimaryKey).findFirst().orElseThrow().toString();
+        String getPk = toGetterName(pk);
+
+        StringBuilder fullIfPart = new StringBuilder();
+
+        for (ColumnDefinition columnDefinition : tableDefinition.getColumns()) {
+            if (columnDefinition.isPrimaryKey()) continue;
+            String ifPart = INDENT + INDENT + "if(" + camelCase + "." + toGetterName(columnDefinition.getColumnName()) + "() != null) {\n"
+                    + INDENT + INDENT + INDENT + "sql.append(\"" + columnDefinition.getColumnName() + " = ?, \");\n"
+                    + INDENT + INDENT + INDENT + "params.add(" + camelCase + "." + toGetterName(columnDefinition.getColumnName()) + "());\n"
+                    + INDENT + INDENT + "}\n\n";
+            fullIfPart.append(ifPart);
+        }
+
+        String exception = INDENT + INDENT + "if (params.isEmpty()) {\n"
+                + INDENT + INDENT + INDENT + "System.err.println(\"[" + method.getMethodName() + "Mapper.update()] \" + \"No params for the given \" + \"" + pascalCase + "\");\n"
+                + INDENT + INDENT + INDENT + "throw new DatabaseException(\"No fields to update for " + tableDefinition.getTableName() + "\");\n"
+                + INDENT + INDENT + "}\n";
+
+        String restSql = INDENT + INDENT + "sql.setLength(sql.length() - 2);\n"
+                + INDENT + INDENT + "sql.append(\" WHERE " + pk + " = ?\");\n"
+                + INDENT + INDENT + "params.add(" + camelCase + "." + getPk + ");\n";
+
+        return fullIfPart + exception + restSql;
+    }
+
     private void writeIfAbsent(Path filePath, String content) throws IOException {
         if (Files.exists(filePath)) {
             System.out.println("Springer over (findes allerede): " + filePath.getFileName());
@@ -627,4 +676,171 @@ public class ClassGenerator {
         }
         Files.writeString(filePath, content);
     }
+
+    private String generateCustomMethod(CustomMethod method) {
+        String methodBody = generateCustomMethodBody(method);
+        return generateCustomReadSignature(method, methodBody);
+    }
+
+
+    private String generateCustomReadSignature(CustomMethod method, String methodBody) {
+        TableDefinition table = method.getTable();
+        String pascalCase = toPascalCase(table.getTableName());
+        String camelCase = toCamelCase(table.getTableName());
+
+        String returnTypeStr = "";
+
+        switch (method.getReturnType()) {
+            case LIST -> returnTypeStr = "List<" + pascalCase + ">";
+            case OBJECT -> returnTypeStr = pascalCase;
+            case VOID -> returnTypeStr = "void";
+        }
+
+        String methodParams = "";
+
+        switch (method.getCrudType()){
+            case READ -> {
+               methodParams = method.getParameters().stream()
+                        .map(p -> TypeMapper.toJavaType(p.getDataType()) + " " + toCamelCase(p.getColumnName()))
+                        .collect(Collectors.joining(", "));
+            }
+            case UPDATE -> {
+                methodParams = pascalCase + " " + camelCase;
+            }
+            case DELETE -> {
+                methodParams = method.getTable().getColumns().stream().filter(ColumnDefinition::isPrimaryKey)
+                        .map(c -> TypeMapper.toJavaType(c.getDataType())+ " " + toCamelCase(c.getColumnName()))
+                        .findFirst().orElseThrow();
+            }
+        }
+
+        return String.format("\n" + INDENT + "public %s %s(%s) throws DatabaseException {\n%s" + INDENT + "}\n\n", returnTypeStr, method.getMethodName(), methodParams, methodBody);
+    }
+
+    private String generateCustomMethodBody(CustomMethod method) {
+        String sqlString = customSqlString(method);
+        String insideTry = generateInsideTry(method);
+        String methodPath = toPascalCase(method.getTable().getTableName()) + "." + method.getMethodName();
+        String tableName = method.getTable().getTableName();
+
+        String tryCatch = INDENT + INDENT + generateTryCatchCustomMethod(insideTry, methodPath, tableName, method.getCrudType());
+
+        String returnNull = method.getReturnType() == ReturnType.OBJECT
+                ? INDENT + INDENT + "return null;\n"
+                : "";
+
+        return sqlString + tryCatch + returnNull;
+
+    }
+
+    private String customSqlString(CustomMethod method) {
+
+        List<ColumnDefinition> params = method.getParameters();
+        TableDefinition table = method.getTable();
+
+        // SQL String - where part
+        String whereClause = getWhereClause(params);
+
+        // SQL String - part depends on type chosen, with added where part
+        String sqlStatement = "";
+        switch (method.getCrudType()) {
+            case CrudType.READ -> sqlStatement = "SELECT * FROM ";
+            case DELETE -> sqlStatement = "DELETE FROM ";
+            case UPDATE -> {
+                return dynamicUpdateSqlString(method);
+            }
+        }
+
+
+        return INDENT + INDENT + String.format("String sql = \"%s %s WHERE %s\";\n", sqlStatement, table.getTableName(), whereClause);
+    }
+
+    private String generateTryCatchCustomMethod(String insideTry, String methodPath, String tableName, CrudType crudType) {
+        String dbExceptionText = "";
+        switch (crudType) {
+            case READ -> dbExceptionText = "Could not fetch from ";
+            case UPDATE -> dbExceptionText = "Could not update ";
+            case DELETE -> dbExceptionText = "Could not delete from ";
+        }
+        StringBuilder tryCatchTemplate = new StringBuilder();
+        tryCatchTemplate.append("try (\n")
+                .append(INDENT + INDENT + INDENT + INDENT).append("Connection connection = connectionPool.getConnection();\n")
+                .append(INDENT + INDENT + INDENT + INDENT).append("PreparedStatement ps = connection.prepareStatement(sql)\n")
+                .append(INDENT + INDENT).append(") {\n")
+                .append(insideTry)
+                .append("\n")
+                .append(INDENT + INDENT).append("} catch (SQLException e) {\n")
+                .append(INDENT + INDENT + INDENT).append("System.err.println(\"[").append(tableName).append(".").append(methodPath).append("]\" + e.getMessage());\n")
+                .append(INDENT + INDENT + INDENT).append(String.format("throw new DatabaseException(\"%s", dbExceptionText)).append(tableName).append("\");\n")
+                .append(INDENT + INDENT).append("}\n");
+
+        return tryCatchTemplate.toString();
+    }
+
+    private String generateInsideTry(CustomMethod method) {
+        switch (method.getCrudType()) {
+            case READ -> {
+                return generateReadInsideTry(method);
+            }
+            case UPDATE -> {
+                return generateUpdateInsideTry(method);
+            }
+            case DELETE -> {
+                return generateDeleteInsideTry(method);
+            }
+        }
+        return null;
+    }
+
+    private String generateReadInsideTry(CustomMethod method) {
+        int i = 1;
+        StringBuilder entireSetters = new StringBuilder();
+        for (ColumnDefinition column : method.getParameters()) {
+            String setType = TypeMapper.toPreparedStatementMethod(TypeMapper.toJavaType(column.getDataType()));
+            String camelCase = toCamelCase(column.getColumnName());
+            String s = INDENT + INDENT + INDENT + String.format("ps.%s(%s, %s);\n", setType, i, camelCase);
+            entireSetters.append(s);
+            i++;
+        }
+        return entireSetters + generateCustomResultSetHandling(method);
+    }
+
+    private String generateUpdateInsideTry(CustomMethod method) {
+        return INDENT + INDENT + INDENT + "for (int i = 0; i < params.size(); i++) {\n" +
+                INDENT + INDENT + INDENT + INDENT + "ps.setObject(i + 1, params.get(i));\n" +
+                INDENT + INDENT + INDENT + "}\n" +
+                INDENT + INDENT + INDENT + "ps.executeUpdate();\n";
+    }
+
+    private String generateDeleteInsideTry(CustomMethod method) {
+        StringBuilder sb = new StringBuilder();
+        int paramAmount = 0;
+        for (ColumnDefinition definition : method.getParameters()) {
+            String s = String.format(INDENT + INDENT + INDENT + INDENT + "ps.%s(%s, %s);\n", TypeMapper.toPreparedStatementMethod(TypeMapper.toJavaType(definition.getDataType())), paramAmount, definition.getColumnName());
+            sb.append(s);
+        }
+        return String.format(INDENT + INDENT + INDENT + "%sps.executeStatement();\n", sb);
+    }
+
+    private String generateCustomResultSetHandling(CustomMethod method) {
+        String pascalCase = toPascalCase(method.getTable().getTableName());
+        boolean returnTypeIsList = method.getReturnType() == ReturnType.LIST;
+
+
+        String whileOrIf = returnTypeIsList ? """
+                List<%s> result = new ArrayList<>();
+                while (rs.next()) {
+                    result.add(mapRow(rs));
+                }
+                return result;""".formatted(pascalCase)
+                : """
+                if (rs.next()) {
+                    return mapRow(rs);
+                }""";
+
+        return INDENT + INDENT + INDENT + "try (ResultSet rs = ps.executeQuery()) {\n"
+                + whileOrIf.indent(INDENT.length() * 4)
+                + INDENT + INDENT + INDENT + "}\n";
+    }
+
 }

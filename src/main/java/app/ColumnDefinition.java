@@ -6,13 +6,16 @@ public class ColumnDefinition {
     private final boolean isPrimaryKey;
     private final boolean isForeignKey;
     private final boolean isNullable;
+    private final boolean isUnique;
 
     public ColumnDefinition(String columnName, String dataType, String constraintType, boolean isNullable) {
         this.columnName = columnName;
         this.dataType = dataType;
         this.isPrimaryKey = "PRIMARY KEY".equals(constraintType);
         this.isForeignKey = "FOREIGN KEY".equals(constraintType);
+        this.isUnique = "UNIQUE".equals(constraintType);
         this.isNullable = isNullable;
+
     }
 
     // Getters
@@ -30,6 +33,10 @@ public class ColumnDefinition {
 
     public boolean isForeignKey() {
         return isForeignKey;
+    }
+
+    public boolean isUnique() {
+        return isUnique;
     }
 
     public boolean isNullable() {
