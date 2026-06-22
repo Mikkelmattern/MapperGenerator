@@ -196,6 +196,16 @@ The return type is inferred automatically — you do not select it manually:
 
 Multiple parameters are joined with `AND`.
 
+## Planned features
+
+- **Unique column indicator** — mark unique columns visually in the parameter list so it is clear which selections will produce a single object vs. a list
+- **Remove method** — a remove button in the custom methods dialog to undo a queued method before generating
+- **Validation** — warn if the user tries to add a method without selecting any parameters, or if the method name is already taken
+- **Update existing mappers** — instead of skipping files that already exist, offer to append custom methods to them without touching the rest of the file
+- **Multiple schemas** — let the user select which PostgreSQL schemas to read, instead of always defaulting to `public`
+- **JOIN methods** — generate methods that join two tables based on detected foreign key relationships (e.g. `getOrderWithCustomer(int orderId)`)
+- **Configuration file** — save connection details to a local `.properties` file so they do not need to be re-entered on every run
+
 ## Limitations
 
 - **Custom methods are only added to new files.** Because existing files are never overwritten, custom methods are not appended to mappers that already exist on disk. To add custom methods to an existing mapper, delete the file and re-run the generator.
