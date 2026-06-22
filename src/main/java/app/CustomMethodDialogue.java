@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.Frame;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CustomMethodDialogue {
 
@@ -12,6 +13,10 @@ public class CustomMethodDialogue {
     private final List<TableDefinition> tables;
     private final List<CustomMethod> customMethods = new ArrayList<>();
     JDialog dialog = new JDialog((Frame) null, "Custom metoder", true);
+
+    private CrudType selectedCrudType = null;
+    private List<String> selectedParams = null;
+    private TableDefinition currentTable = null;
 
     public CustomMethodDialogue(List<TableDefinition> tables) {
         this.tables = tables;
@@ -35,12 +40,11 @@ public class CustomMethodDialogue {
         // Creates the dropdown for tables and updates the column list to match
         JComboBox<String> tableDropDown = new JComboBox<>(tablesNames);
         JComboBox<CrudType> crudDropDown = new JComboBox<>(CrudType.values());
-        JComboBox<ReturnType> returnDropDown = new JComboBox<>(ReturnType.values());
         DefaultListModel<String> columnListContent = new DefaultListModel<>();
         JList<String> columnSelect = new JList<>(columnListContent);
         columnSelect.setVisibleRowCount(5);
         columnSelect.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        JTextField methodTextField = new JTextField(15);
+        JTextField methodTextField = new JTextField(20);
         JButton addButton = new JButton("Tilføj metode");
         DefaultListModel<String> methodOverviewContent = new DefaultListModel<>();
         JList<String> methodOverview = new JList<>(methodOverviewContent);
@@ -54,16 +58,25 @@ public class CustomMethodDialogue {
             for (TableDefinition table : tables) {
                 if (table.getTableName().equals(selectedName)) {
                     columnListContent.clear();
-                    //TODO create method to change methodname correctly based on table, crud and params
+                    currentTable = table;
                     for (ColumnDefinition column : table.getColumns()) {
                         columnListContent.addElement(column.getColumnName());
                     }
                 }
             }
+            updateMethodName(methodTextField);
         });
 
         crudDropDown.addActionListener(event -> {
+            selectedCrudType = (CrudType) crudDropDown.getSelectedItem();
+            updateMethodName(methodTextField);
+        });
 
+        columnSelect.addListSelectionListener(e -> {
+            selectedParams = columnSelect.getSelectedValuesList();
+            if (!e.getValueIsAdjusting()) {
+                updateMethodName(methodTextField);
+            }
         });
 
         // Finds the first table in the table list with the given name for the selected table
@@ -71,40 +84,32 @@ public class CustomMethodDialogue {
                 .filter(t -> t.getTableName().equals(tableDropDown.getSelectedItem()))
                 .findFirst().orElse(null);
 
-        // CRUD dropdown
-        CrudType selectedCrudType = (CrudType) crudDropDown.getSelectedItem();
-        if (selectedTableDef != null && selectedCrudType != null) {
-            // TODO rethink how the method name should look
-            String s = selectedCrudType.getCrudPrefix() + toPascalCase(selectedTableDef.getTableName());
-            methodTextField.setText(s);
-        }
 
         // Adds the different JObjects to the rows
         addRow(panel, gbc, "Tabel:", tableDropDown, 0);
         addRow(panel, gbc, "Type:", crudDropDown, 1);
         addRow(panel, gbc, "Parametre:", new JScrollPane(columnSelect), 2);
-        addRow(panel, gbc, "Returnerer:", returnDropDown, 3);
-        addRow(panel, gbc, "Metodenavn:", methodTextField, 4);
+        addRow(panel, gbc, "Metodenavn:", methodTextField, 3);
 
         // Adds add button to the row
         gbc.gridx = 0;
-        gbc.gridy = 5;
+        gbc.gridy = 4;
         gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(addButton, gbc);
 
         // Adds the method overview
-        gbc.gridy = 6;
+        gbc.gridy = 5;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(new JLabel("Tilføjede metoder:"), gbc);
-        gbc.gridy = 7;
+        gbc.gridy = 6;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
         panel.add(new JScrollPane(methodOverview), gbc);
 
         //Add the ok button to the row
         gbc.gridx = 0;
-        gbc.gridy = 8;
+        gbc.gridy = 7;
         gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
         gbc.fill = GridBagConstraints.NONE;
@@ -115,12 +120,18 @@ public class CustomMethodDialogue {
             TableDefinition table = tables.stream()
                     .filter(t -> t.getTableName().equals(tableDropDown.getSelectedItem()))
                     .findFirst().orElse(null);
+            if (table == null) return;
             List<String> params = columnSelect.getSelectedValuesList();
-            List<ColumnDefinition> columnParams = table != null ? table.getColumns().stream()
-                    .filter(t -> params.contains(t.getColumnName())).toList() : null;
+            List<ColumnDefinition> columnParams = table.getColumns().stream()
+                    .filter(t -> params.contains(t.getColumnName())).toList();
 
             CrudType crudType = (CrudType) crudDropDown.getSelectedItem();
-            ReturnType returnType = (ReturnType) returnDropDown.getSelectedItem();
+            if (crudType == null) return;
+            ReturnType returnType = switch (crudType) {
+                case READ ->
+                        columnParams.stream().anyMatch(ColumnDefinition::isUnique) ? ReturnType.OBJECT : ReturnType.LIST;
+                case UPDATE, DELETE -> ReturnType.VOID;
+            };
             String methodName = methodTextField.getText();
 
             methodOverviewContent.addElement(methodName);
@@ -134,8 +145,9 @@ public class CustomMethodDialogue {
 
         dialog.add(panel);
         tableDropDown.getActionListeners()[0].actionPerformed(null);
+        crudDropDown.getActionListeners()[0].actionPerformed(null);
         dialog.setVisible(true);
-
+        updateMethodName(methodTextField);
         return customMethods;
     }
 
@@ -155,5 +167,45 @@ public class CustomMethodDialogue {
             name.append(upperCased);
         }
         return name.toString();
+    }
+
+    private void updateMethodName(JTextField methodField) {
+        if (currentTable == null || selectedCrudType == null) return;
+        CrudType crudType = selectedCrudType;
+        List<String> params = selectedParams;
+        TableDefinition table = currentTable;
+        String tableName = table.getTableName();
+
+        List<ColumnDefinition> columnParams = selectedParams != null
+                ? currentTable.getColumns().stream()
+                .filter(c -> selectedParams.contains(c.getColumnName()))
+                .toList()
+                : List.of();
+
+        ReturnType returnType = switch (selectedCrudType) {
+            case READ -> columnParams.stream().anyMatch(c -> c.isPrimaryKey() || c.isUnique())
+                    ? ReturnType.OBJECT : ReturnType.LIST;
+            case UPDATE, DELETE -> ReturnType.VOID;
+        };
+
+        String prefix = switch (crudType) {
+            case READ -> returnType == ReturnType.LIST ? "getAll" : "get";
+            case UPDATE -> "update";
+            case DELETE -> "delete";
+            case null, default -> "";
+        };
+
+        if (tableName != null) {
+            prefix += toPascalCase(tableName);
+        }
+
+        String suffix = (params != null && !params.isEmpty())
+                ? params.stream().map(this::toPascalCase)
+                .collect(Collectors.joining("And")) : "";
+
+
+        methodField.setText(suffix.isEmpty()
+                ? prefix
+                : String.format("%sBy%s", prefix, suffix));
     }
 }
