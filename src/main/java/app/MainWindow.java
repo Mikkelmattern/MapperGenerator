@@ -19,7 +19,7 @@ public class MainWindow implements ActionListener {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
                  UnsupportedLookAndFeelException e) {
-            JOptionPane.showMessageDialog(frame, "Fejl: " + e.getMessage());
+            JOptionPane.showMessageDialog(frame, "Error: " + e.getMessage());
         }
 
         Platform.startup(() -> {
@@ -109,7 +109,7 @@ public class MainWindow implements ActionListener {
                 Path javaRoot = PathResolver.resolveJavaRoot(outputDir);
 
                 if (!javaRoot.equals(outputDir)) {
-                    JOptionPane.showMessageDialog(frame, "Filerne genereres i " + javaRoot);
+                    JOptionPane.showMessageDialog(frame, "Files will be generated in " + javaRoot);
                 }
 
                 // 5. Generate files
@@ -117,14 +117,14 @@ public class MainWindow implements ActionListener {
                 generator.generate(tables, javaRoot, customMethods);
 
                 // 6. Show message
-                JOptionPane.showMessageDialog(frame, "Genereret " + tables.size() + " mappere i " + outputDir);
+                JOptionPane.showMessageDialog(frame, "Generated " + tables.size() + " mappers in " + outputDir);
 
                 // 7. Close Jframe
                 frame.dispose();
                 System.exit(0);
             }
         } catch (DatabaseException | IOException ex) {
-            JOptionPane.showMessageDialog(frame, "Fejl: " + ex.getMessage());
+            JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage());
         }
 
     }

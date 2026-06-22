@@ -13,11 +13,11 @@ A Java tool that automatically generates entity classes and mapper classes based
 1. Clone the repository and open it in IntelliJ IDEA
 2. Run the `Main` class
 3. Fill in the database connection details:
-   - **User** — your PostgreSQL username
-   - **Password** — your PostgreSQL password
-   - **URL** — connection string, e.g. `jdbc:postgresql://localhost:5432/%s`
-   - **Schema** — typically `public`
-   - **Database** — your database name
+    - **User** — your PostgreSQL username
+    - **Password** — your PostgreSQL password
+    - **URL** — connection string, e.g. `jdbc:postgresql://localhost:5432/%s`
+    - **Schema** — typically `public`
+    - **Database** — your database name
 4. Click **Submit**
 5. A custom methods dialog opens — add any extra mapper methods you need (optional), then click **Ok**
 6. A folder dialog will open — select your **project folder** (or any folder inside `src/main/java/`)
@@ -195,16 +195,6 @@ The return type is inferred automatically — you do not select it manually:
 | DELETE | `DELETE FROM table WHERE col = ?` |
 
 Multiple parameters are joined with `AND`.
-
-## Planned features
-
-- **Unique column indicator** — mark unique columns visually in the parameter list so it is clear which selections will produce a single object vs. a list
-- **Remove method** — a remove button in the custom methods dialog to undo a queued method before generating
-- **Validation** — warn if the user tries to add a method without selecting any parameters, or if the method name is already taken
-- **Update existing mappers** — instead of skipping files that already exist, offer to append custom methods to them without touching the rest of the file
-- **Multiple schemas** — let the user select which PostgreSQL schemas to read, instead of always defaulting to `public`
-- **JOIN methods** — generate methods that join two tables based on detected foreign key relationships (e.g. `getOrderWithCustomer(int orderId)`)
-- **Configuration file** — save connection details to a local `.properties` file so they do not need to be re-entered on every run
 
 ## Limitations
 
