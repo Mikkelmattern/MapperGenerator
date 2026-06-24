@@ -79,6 +79,23 @@ public class CustomMethodDialogue {
             }
         });
 
+        // Adds an asterisk to unique columns
+        columnSelect.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            ColumnDefinition col = currentTable.getColumns().stream().filter(c -> c.getColumnName().equals(value)).findFirst().orElseThrow();
+
+            JLabel label = new JLabel(col.isUnique() ? value + " *" : value);
+            label.setOpaque(true);
+
+            if (isSelected){
+                label.setBackground(list.getSelectionBackground());
+                label.setForeground(list.getSelectionForeground());
+            } else {
+                label.setBackground(list.getBackground());
+                label.setForeground(list.getForeground());
+            }
+            return label;
+        });
+
         // Finds the first table in the table list with the given name for the selected table
         TableDefinition selectedTableDef = tables.stream()
                 .filter(t -> t.getTableName().equals(tableDropDown.getSelectedItem()))
