@@ -8,20 +8,18 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 
+import com.formdev.flatlaf.FlatLightLaf;
+
 import javafx.application.Platform;
 
 public class MainWindow implements ActionListener {
-    JFrame frame = new JFrame("Connect to database");
+    JFrame frame;
     JTextField userField, passwordField, urlField, schemaField, databaseField;
 
     public void mainFrame() {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
-                 UnsupportedLookAndFeelException e) {
-            JOptionPane.showMessageDialog(frame, "Error: " + e.getMessage());
-        }
+        FlatLightLaf.setup();
 
+        frame = new JFrame("Connect to database");
         Platform.startup(() -> {
         });
         Platform.setImplicitExit(false);
@@ -119,7 +117,7 @@ public class MainWindow implements ActionListener {
                 // 6. Show message
                 JOptionPane.showMessageDialog(frame, "Generated " + tables.size() + " mappers in " + outputDir);
 
-                // 7. Close Jframe
+                // 7. Close JFrame
                 frame.dispose();
                 System.exit(0);
             }

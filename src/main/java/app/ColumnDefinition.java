@@ -36,7 +36,7 @@ public class ColumnDefinition {
     }
 
     public boolean isUnique() {
-        return isUnique;
+        return isUnique || isPrimaryKey;
     }
 
     public boolean isNullable() {

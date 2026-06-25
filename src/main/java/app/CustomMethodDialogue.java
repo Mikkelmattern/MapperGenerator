@@ -12,7 +12,7 @@ public class CustomMethodDialogue {
 
     private final List<TableDefinition> tables;
     private final List<CustomMethod> customMethods = new ArrayList<>();
-    JDialog dialog = new JDialog((Frame) null, "Custom Methods", true);
+    JDialog dialog;
 
     private CrudType selectedCrudType = null;
     private List<String> selectedParams = null;
@@ -23,6 +23,8 @@ public class CustomMethodDialogue {
     }
 
     public List<CustomMethod> show() {
+
+        dialog = new JDialog((Frame) null, "Custom Methods", true);
 
         // Dialogue setup
         dialog.setSize(400, 450);
@@ -45,10 +47,14 @@ public class CustomMethodDialogue {
         columnSelect.setVisibleRowCount(5);
         columnSelect.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         JTextField methodTextField = new JTextField(20);
-        JButton addButton = new JButton("Add Method");
+        JButton addButton = new JButton("+ Add Method");
+        addButton.setEnabled(false);
         DefaultListModel<String> methodOverviewContent = new DefaultListModel<>();
         JList<String> methodOverview = new JList<>(methodOverviewContent);
         methodOverview.setVisibleRowCount(5);
+        JButton removeButton = new JButton("Remove");
+        removeButton.setForeground(Color.RED);
+        removeButton.setEnabled(false);
         JButton okButton = new JButton("Ok");
 
         // Action listener for when an item is selected in the table dropdown
@@ -67,16 +73,95 @@ public class CustomMethodDialogue {
             updateMethodName(methodTextField);
         });
 
+        // Updates the method name based on crud type
         crudDropDown.addActionListener(event -> {
             selectedCrudType = (CrudType) crudDropDown.getSelectedItem();
             updateMethodName(methodTextField);
         });
 
+        // Sets the chosen params as a list of strings, and updates the method name accordingly
         columnSelect.addListSelectionListener(e -> {
             selectedParams = columnSelect.getSelectedValuesList();
+            addButton.setEnabled(!columnSelect.isSelectionEmpty());
+
             if (!e.getValueIsAdjusting()) {
                 updateMethodName(methodTextField);
             }
+        });
+
+        // Enables remove button if an element is selected
+        methodOverview.addListSelectionListener(event -> {
+            removeButton.setEnabled(!(event.getValueIsAdjusting() || methodOverview.isSelectionEmpty()));
+        });
+
+        // Adds function to remove button
+        removeButton.addActionListener(event -> {
+            int selectedIndex = methodOverview.getSelectedIndex();
+            if (selectedIndex == -1) return;
+
+            // Finds index of correct method and
+            methodOverviewContent.remove(selectedIndex);
+            customMethods.remove(selectedIndex);
+            removeButton.setEnabled(false);
+        });
+
+        // Adds an asterisk to unique columns
+        columnSelect.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            ColumnDefinition col = currentTable.getColumns().stream().filter(c -> c.getColumnName()
+                    .equals(value)).findFirst().orElseThrow();
+
+            JLabel label = new JLabel(col.isUnique() ? value + " *" : value);
+            label.setOpaque(true);
+
+            if (isSelected) {
+                label.setBackground(list.getSelectionBackground());
+                label.setForeground(list.getSelectionForeground());
+            } else {
+                label.setBackground(list.getBackground());
+                label.setForeground(list.getForeground());
+            }
+            return label;
+        });
+
+        // Adds function to the add button
+        addButton.addActionListener(l -> {
+
+            // Finds the table with the name chosen in the table dropdown list
+            TableDefinition table = tables.stream()
+                    .filter(t -> t.getTableName().equals(tableDropDown.getSelectedItem()))
+                    .findFirst().orElse(null);
+
+            if (table == null) return;
+
+            // Finds the columns with the names chosen in the column selection list
+            List<String> params = columnSelect.getSelectedValuesList();
+            List<ColumnDefinition> columnParams = table.getColumns().stream()
+                    .filter(t -> params.contains(t.getColumnName())).toList();
+
+            // Finds the crud type
+            CrudType crudType = (CrudType) crudDropDown.getSelectedItem();
+
+            // Hopefully redundant null check
+            if (crudType == null) return;
+
+            // Figures out the return type based on whether crud type and whether a column is unique
+            ReturnType returnType = switch (crudType) {
+                case READ ->
+                        columnParams.stream().anyMatch(ColumnDefinition::isUnique) ? ReturnType.OBJECT : ReturnType.LIST;
+                case UPDATE, DELETE -> ReturnType.VOID;
+            };
+
+            String methodName = methodTextField.getText();
+
+            // Adds the method name to the overview window
+            methodOverviewContent.addElement(methodName);
+
+            customMethods.add(new CustomMethod(methodName, table, columnParams, crudType, returnType));
+        });
+
+
+        okButton.addActionListener(action -> {
+            dialog.dispose();
         });
 
         // Finds the first table in the table list with the given name for the selected table
@@ -107,41 +192,21 @@ public class CustomMethodDialogue {
         gbc.weighty = 1.0;
         panel.add(new JScrollPane(methodOverview), gbc);
 
-        //Add the ok button to the row
+        // Add the remove button to the row
         gbc.gridx = 0;
         gbc.gridy = 7;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.NONE;
+        panel.add(removeButton, gbc);
+
+
+        //Add the ok button to the row
+        gbc.gridy = 7;
+        gbc.gridx = 1;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.EAST;
         panel.add(okButton, gbc);
-
-
-        addButton.addActionListener(l -> {
-            TableDefinition table = tables.stream()
-                    .filter(t -> t.getTableName().equals(tableDropDown.getSelectedItem()))
-                    .findFirst().orElse(null);
-            if (table == null) return;
-            List<String> params = columnSelect.getSelectedValuesList();
-            List<ColumnDefinition> columnParams = table.getColumns().stream()
-                    .filter(t -> params.contains(t.getColumnName())).toList();
-
-            CrudType crudType = (CrudType) crudDropDown.getSelectedItem();
-            if (crudType == null) return;
-            ReturnType returnType = switch (crudType) {
-                case READ ->
-                        columnParams.stream().anyMatch(ColumnDefinition::isUnique) ? ReturnType.OBJECT : ReturnType.LIST;
-                case UPDATE, DELETE -> ReturnType.VOID;
-            };
-            String methodName = methodTextField.getText();
-
-            methodOverviewContent.addElement(methodName);
-
-            customMethods.add(new CustomMethod(methodName, table, columnParams, crudType, returnType));
-        });
-
-        okButton.addActionListener(action -> {
-            dialog.dispose();
-        });
 
         dialog.add(panel);
         tableDropDown.getActionListeners()[0].actionPerformed(null);
